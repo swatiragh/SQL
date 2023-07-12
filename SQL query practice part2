@@ -1,0 +1,93 @@
+/*
+Write an SQL query to report the movies with an odd-numbered ID and a description that is not "boring".
+
+Return the result table ordered by rating in descending order.
+*/
+
+Select  id , movie , description , rating 
+from 
+Cinema 
+where description <> 'boring' and (id%2) <> 0
+order by rating  Desc
+
+
+/*
+Write an SQL query to find the average selling price for each product. average_price should be rounded to 2 decimal places.
+
+
+*/
+Select Prices.product_id, Round(SUM(Prices.price * UnitsSold.units )/SUM(UnitsSold.units),2) as average_price  
+from Prices inner join  UnitsSold
+on 
+Prices.product_id = UnitsSold.product_id
+where UnitsSold.purchase_date between Prices.start_date and Prices.end_date
+Group by Prices.product_id
+
+/*
+Write an SQL query that reports the average experience years of all the employees for each project, rounded to 2 digits.
+*/
+
+Select Project.project_id , round(avg(experience_years),2) as  average_years
+from 
+Project 
+join 
+Employee
+on 
+Project.employee_id = Employee.employee_id
+-- Group BY Project.project_id 
+
+
+/*
+Write an SQL query that reports all the projects that have the most employees.
+
+*/
+
+with cte as (
+              Select project_id , count(employee_id) as count_emp
+              from 
+              Project 
+              group by project_id
+)
+
+select project_id , employee_id
+from
+cte 
+where count_emp= (select max(count_emp) from cte)
+
+
+  /*
+Write an SQL query that reports the most experienced employees in each project. In case of a tie, report all employees with the maximum number of experience years.
+  */
+
+   with cte as (
+              Select project_id , Project.employee_id ,experience_years,
+              dense_rank() OVER ( 
+			            PARTITION BY project_id
+			            ORDER BY experience_years DESC
+		) rnk 
+              from 
+              Project 
+              left join 
+              Employee
+              on 
+              Employee.employee_id = Project.employee_id
+              
+ )
+
+ Select project_id , employee_id from cte where rnk =1
+
+
+-- 
+/*
+
+Write an SQL query to report the fraction of players that logged in again on the day after the day they first logged in, rounded to 2 decimal places. In other words, you need to count the number of players that logged in for at least two consecutive days starting from their first login date, then divide that number by the total number of players.
+*/
+'SELECT
+  ROUND(COUNT(DISTINCT player_id) / (SELECT COUNT(DISTINCT player_id) FROM Activity), 2) AS fraction
+FROM
+  Activity
+WHERE
+  (player_id, DATE_SUB(event_date, INTERVAL 1 DAY))
+  IN (
+    SELECT player_id, MIN(event_date) AS first_login FROM Activity GROUP BY player_id
+  )'
