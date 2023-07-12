@@ -1,0 +1,242 @@
+Use dataex; 
+GO
+
+ select a.product_id, a.year first_year, a.quantity, a.price 
+from
+ (select product_id, year, quantity,price,
+  rank()over(partition by product_id order by year) rnk from Sales) a
+ where a.rnk=1 
+   
+
+ 
+select a.product_id, a.year first_year, a.quantity, a.price , rnk
+from
+ (select product_id, year, quantity,price,
+  rank()over(partition by product_id order by year) rnk from Sales) a
+    
+
+
+Write an SQL query that reports for each user the product id on
+ which the user spent the most money. In case the same user spent 
+ the most money on two or more products, report all of them.  
+
+ Select user_id,product_id 
+ from Sales 
+ group by user_id ,product_id
+  
+ with rank_cte as (
+  select user_id, p.product_id, sum(price * quantity ) as total,
+  rank()
+  over(partition by user_id order by sum(price * quantity) desc) as rnk 
+  from ProductIV as p
+  join 
+  SalesIV as s 
+  on 
+  p.product_id = s.product_id
+  group by user_id, product_id
+
+)
+
+Select user_id, product_id
+from rank_cte 
+where 
+rnk =1 
+  
+
+
+--Write an SQL query that selects the product id, year, quantity, and price for the first year of every product sold.
+
+--Return the resulting table in any order.
+  
+ 
+select product_id, year as first_year, quantity, price from Sales 
+where (product_id, year) in (select product_id, min(year)
+ as year from Sales group by product_id)
+  
+
+
+-- Write an SQL query that reports the spending of each user.
+
+--Return the resulting table ordered by spending in descending order. In case of a tie, order them by user_id in ascending order.
+
+ 
+
+
+Select  Sales.user_id , Sum(Product.price * Sales.quantity)  as spending 
+from Sales 
+join 
+Product 
+on 
+Sales.product_id = Product.product_id
+ group by user_id
+ order by
+    spending desc,
+    Sales.user_id asc
+
+
+--
+
+ 
+-- Write a SQL query to find the IDs of the users who visited without making any transactions and the number of times they made these types of visits.
+
+select p.id P1, hc.id P2,
+ abs(p.x_value - hc.x_value) * abs(p.y_value - hc.y_value)  as area
+from Points p
+inner join Points hc 
+on p.id  < hc.id and 
+(p.x_value <> hc.x_value and p.y_value <> hc.y_value)
+order by 3 desc,1,2;
+
+
+-- Write an SQL query to find all dates' Id with higher temperatures compared to its previous dates (yesterday).
+
+
+  
+
+  
+Select w.id from Weather  w
+,
+Weather we 
+where  
+DATEDIFF(w.recordDate, we.recordDate) = 1 
+and 
+w.temperature > we.temperature 
+  
+
+SELECT id FROM
+	(SELECT *, 
+	lag(temperature) over(ORDER BY recorddate) AS previousTemp,
+	lag(recorddate) over (ORDER BY recorddate) AS previousDay
+	FROM weather) AS compare_temp
+WHERE temperature>previousTemp
+AND datediff(recorddate, previousDay)=1;
+
+SELECT w2.id
+FROM Weather w1
+join Weather w2
+ON DATEDIFF (w1.recordDate ,w2.recordDate ) = -1
+AND w2.temperature>w1.temperature   
+
+
+-- Write an SQL query to report the name and bonus amount of each employee with a bonus less than 1000.
+
+
+ 
+Select  name , bonus 
+from 
+Employee 
+left join Bonus
+on 
+Employee.empId = Bonus.empId 
+where Bonus.bonus < 1000 or bonus IS NULL 
+  
+
+ 
+SELECT e.name ,b.bonus from
+        Employee e LEFT JOIN Bonus b 
+            USING(empId) 
+             where 
+            bonus < 1000 or 
+            bonus is null ;
+
+  
+
+-- Write an SQL query to report the first name, last name, city, and state of each person in the Person table. If the address of a personId is not present in the Address table, report null instead.
+
+
+SELECT Person.firstName, Person.lastName, Address.city, Address.state
+FROM Person
+LEFT JOIN Address
+ON Person.personId = Address.personId;
+
+SELECT p.firstName, p.lastName, a.city, a.state from Person p, Address a
+WHERE p.personId = a.personId
+UNION
+SELECT  p.firstName, p.lastName, null, null from Person p
+WHERE p.personId NOT IN (Select personId from Address);
+  
+ 
+select firstName, lastName, (case when city is Null then Null else city end) as city,
+(case when state is Null then Null else state end) as state
+from person as p
+left join address as a on p.personId=a.personId
+  
+
+-- There is a factory website that has several machines each running the same number of processes. Write an SQL query to find the average time each machine takes to complete a process.
+
+-- The time to complete a process is the 'end' timestamp minus the 'start' timestamp. The average time is calculated by the total time to complete every process on the machine divided by the number of processes that were run.
+
+
+ 
+select a.machine_id ,ROUND(abs(AVG(ac.timestamp - a.timestamp)),3) as processing_time 
+from
+ Activity a 
+join  
+Activity ac
+on 
+a.process_id=ac.process_id
+and a.machine_id = ac.machine_id and a.timestamp > ac.timestamp
+group by a.machine_id 
+  
+
+-- Find the number of times each student attended each exam.
+ 
+Select Students.student_id , Students.student_name , Subjects.subject_name , count(Examinations.subject_name) as attended_exams 
+from 
+Students
+join 
+Subjects 
+left join 
+Examinations
+on 
+Students.student_id = Examinations.student_id
+and 
+Examinations.subject_name = Students.student_name
+Group BY Students.student_id,Students.student_name,Subjects.subject_name
+order by Students.student_id,Subjects.subject_name
+  
+-- The confirmation rate of a user is the number of 'confirmed' messages divided by the total number of requested confirmation messages. The confirmation rate of a user that did not request any confirmation messages is 0. Round the confirmation rate to two decimal places.
+
+ 
+Select Signups.user_id ,Round( ifnull(avg(action = 'confirmed'), 0),2) as confirmation_rate
+from 
+Signups
+left join 
+Confirmations
+on 
+Signups.user_id = Confirmations.user_id 
+GROUP BY Signups.user_id
+
+WITH cte AS (
+SELECT s.user_id AS user_id, COUNT(*) tot_cnt,
+SUM(CASE WHEN action = "confirmed" THEN 1 ELSE 0 END) AS con_cnt
+FROM Signups s LEFT JOIN Confirmations c
+ON s.user_id = c.user_id
+GROUP BY s.user_id)
+
+SELECT user_id, ROUND(con_cnt / tot_cnt,2) AS confirmation_rate
+FROM cte
+
+
+select s.user_id,case 
+when c.confirmation_rate is null then 0 else c.confirmation_rate 
+end as confirmation_rate
+from signups s left join ( 
+select user_id, round(avg(rate),2) confirmation_rate from
+(select *, case
+when action="timeout" then 0 else 1 
+end as rate
+from confirmations)a
+group by user_id)c on s.user_id=c.user_id
+  
+
+-- Find the managers with at least five direct reports.
+
+
+Select m.name from Employeem e
+join Employeem m
+WHERE 
+e.managerId = m.id
+group  by e.managerId 
+having count(*) >= 5 
+
